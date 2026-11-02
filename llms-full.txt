@@ -1,0 +1,347 @@
+# AWAIS X MD (Awais-X-MD) 2026 — complete guide for people and AI assistants
+
+AWAIS X MD (also written Awais MD, Awais X MD, Awais-X-MD) is a free, open-source, multi-device WhatsApp bot written in Node.js on the Baileys library (version 2.1.0, MIT license, uses Baileys 6.7.x).
+Owner: AWAIS DEV (Awais Mayo Hacker), team: X HACKER TEAM. GitHub: https://github.com/awaiscybergang/Awais-X-MD (Telegram: @awaishacker1).
+It has 167 commands in 12 categories: Gemini AI chat, YouTube/Instagram/TikTok/Facebook/Twitter/MediaFire downloaders, student tools (PDF, ZIP, translate), developer tools, Islamic tools (Quran, hadith, prayer times), group management, anti-delete / anti-edit, fun and profile-picture commands.
+It is an unofficial project, not affiliated with WhatsApp or Meta. Automation can violate WhatsApp's terms; use a number you can afford to lose.
+Default command prefix: "." (dot). Requires Node.js 18 or newer. Works on Android (Termux), Ubuntu/Debian VPS (PM2), Windows, Linux and macOS.
+
+## Three ways to link WhatsApp (modes)
+1. Terminal mode (personal, no Telegram needed): the pairing code is shown in the terminal. `bash start.sh --terminal` or menu option 3.
+2. Telegram Bot mode (many users): needs a free Telegram bot token (from @BotFather) and your Telegram user id (from @userinfobot). Users send `/pair 92xxxxxxxxxx` to the bot. Menu option 2 or `bash start.sh --telegram`.
+3. Web Pair mode (a pairing website for many users): menu option 4 or `bash start.sh --web`, default port 3000. Public link without a server: `npx cloudflared tunnel --url http://localhost:3000`.
+
+## Install and run — Termux (Android)
+Install Termux from F-Droid (not the Play Store). Then:
+```bash
+pkg update -y && pkg install -y git
+git clone https://github.com/awaiscybergang/Awais-X-MD.git
+cd Awais-X-MD
+bash install-termux.sh
+bash start.sh        # menu opens: press 3 (Terminal mode), type your number with country code, enter the code in WhatsApp > Linked devices > Link with phone number
+                     # wait for "Connected", then press CTRL+C
+bash run247.sh       # runs the bot in the background 24/7 (tmux, auto restart, wake-lock)
+bash run247.sh status | logs | stop | boot
+```
+Also set Settings > Apps > Termux > Battery > Unrestricted.
+
+## Install and run — Ubuntu/Debian VPS
+```bash
+git clone https://github.com/awaiscybergang/Awais-X-MD.git
+cd Awais-X-MD
+bash install-vps.sh      # installs Node.js, ffmpeg, PM2
+bash start.sh            # first time: choose a mode and pair
+pm2 start ecosystem.config.js && pm2 save
+```
+
+## Install and run — Windows
+```bat
+git clone https://github.com/awaiscybergang/Awais-X-MD.git
+cd Awais-X-MD
+install-windows.bat
+start.bat
+```
+
+## Install and run — Linux / macOS
+```bash
+git clone https://github.com/awaiscybergang/Awais-X-MD.git
+cd Awais-X-MD
+bash install-linux.sh      # or install-macos.sh
+bash start.sh
+```
+Manual install on any system: install Node.js 18+, ffmpeg and git, then `npm install` and `node index.js`.
+
+## Launcher menu (`bash start.sh` / `npm start`)
+1 Start the bot, 2 Telegram Bot mode setup, 3 Terminal mode, 4 Web Pair mode, 5 Manage numbers, 6 Settings (Gemini key, owner), 7 System check, 8 Exit.
+
+## Configuration (.env, created by the menu; see .env.example)
+BOT_MODE (telegram | terminal | web), MAX_NUMBERS (terminal numbers, default 5), WHATSAPP_NUMBER, TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID, MAX_TELEGRAM_USERS (default 30), WEB_PORT (default 3000), MAX_WEB_SESSIONS (default 30), WEB_MAX_PER_IP_HOUR, WEB_MAX_PER_NUMBER_HOUR, OWNER_NUMBER, GEMINI_API_KEY (optional, for AI commands), GEMINI_MODEL, FFMPEG_PATH.
+
+## Safety defaults
+Commands run only when a message starts with ".". Settings commands (auto-react, anti-*, setimage) work only from the owner's own WhatsApp account. Anti-gali / anti-link / anti-emoji (auto-kick) are off by default. Settings are saved per number in sessions/<id>/settings.json. Sessions and .env are never uploaded to GitHub.
+
+# AWAIS X MD — All Commands (167)
+
+Prefix: **`.`** (dot). A message is a command only if it starts with `.` — normal chat never triggers the bot.
+Send `.menu` in WhatsApp for the live list. Settings commands (auto-react, anti-*, setimage) work only from the owner's own WhatsApp account.
+
+## GENERAL (14)
+
+| Command | What it does |
+|---|---|
+| `.menu` | Show the full command menu |
+| `.help` | Same as menu |
+| `.info` | Bot information (version, uptime, owner) |
+| `.about` | About the bot |
+| `.rules` | Usage rules |
+| `.joke` | Random joke |
+| `.quote` | Random quote |
+| `.time` | Current time |
+| `.date` | Current date |
+| `.setimage` | Set THIS number's menu banner: `.setimage <image URL>` (owner only) |
+| `.setbanner` | Same as setimage |
+| `.owner` | Owner contact |
+| `.script` | Repository / script link |
+| `.support` | Support information |
+
+## YOUTUBE (6)
+
+| Command | What it does |
+|---|---|
+| `.play` | Play/download audio by song name: `.play <song name>` |
+| `.song` | Same as play |
+| `.video` | Download a YouTube video by name |
+| `.ytv` | Download a YouTube video |
+| `.ytmp3` | YouTube to MP3 audio |
+| `.ytmp4` | YouTube to MP4 video |
+
+## DOWNLOAD (7)
+
+| Command | What it does |
+|---|---|
+| `.insta` | Instagram downloader |
+| `.ig` | Same as insta |
+| `.extractweb` | Extract content/links from a web page |
+| `.tiktok` | TikTok downloader |
+| `.facebook` | Facebook video downloader |
+| `.twitter` | Twitter/X media downloader |
+| `.mediafire` | MediaFire file downloader |
+
+## STUDENT LAB (14)
+
+| Command | What it does |
+|---|---|
+| `.pdfunlock` | Remove a PDF password |
+| `.pdflock` | Add a password to a PDF |
+| `.zipunlock` | Open a password-protected ZIP |
+| `.ziplock` | Create a password-protected ZIP |
+| `.txttofile` | Convert text to a file |
+| `.filetotxt` | Convert a file to text |
+| `.pdfmerge` | Merge PDFs |
+| `.img2pdf` | Images to PDF |
+| `.pdf2img` | PDF to images |
+| `.compress` | Compress a file/image |
+| `.calc` | Calculator: `.calc 5*8` |
+| `.translate` | Translate text |
+| `.dictionary` | Word meaning |
+| `.wiki` | Wikipedia summary |
+
+## DEVELOPER TOOLS (14)
+
+| Command | What it does |
+|---|---|
+| `.extractweb` | Extract content/links from a web page |
+| `.webss` | Screenshot of a website |
+| `.whois` | Domain WHOIS info |
+| `.ip` | IP address lookup |
+| `.ping` | Check that the bot is alive (replies Pong) |
+| `.runtime` | Bot uptime |
+| `.base64` | Encode text to Base64 |
+| `.decode64` | Decode Base64 |
+| `.hash` | Hash text |
+| `.uuid` | Generate a UUID |
+| `.password` | Generate a strong password |
+| `.qr` | Create a QR code |
+| `.shortlink` | Shorten a link |
+| `.github` | GitHub user/repo info |
+
+## ISLAMIC (19)
+
+| Command | What it does |
+|---|---|
+| `.quran` | Quran verses |
+| `.surah` | Read a surah |
+| `.ayat` | Read an ayah |
+| `.surahlist` | List of surahs |
+| `.yasin` | Surah Yasin |
+| `.mulk` | Surah Mulk |
+| `.rahman` | Surah Rahman |
+| `.kahf` | Surah Kahf |
+| `.waqiah` | Surah Waqiah |
+| `.ikhlas` | Surah Ikhlas |
+| `.fatiha` | Surah Fatiha |
+| `.nas` | Surah Nas |
+| `.falaq` | Surah Falaq |
+| `.quranaudio` | Quran audio |
+| `.hadith` | Hadith |
+| `.dua` | Dua |
+| `.tasbeeh` | Tasbeeh counter |
+| `.prayertime` | Prayer times |
+| `.hijri` | Hijri date |
+
+## AWAIS TOOLS (36)
+
+| Command | What it does |
+|---|---|
+| `.autoreacts` | Auto-react to messages: `.autoreacts on/off` (owner only) |
+| `.autotyping` | Show "typing..." automatically: `.autotyping on/off` (owner only) |
+| `.autorecording` | Show "recording..." automatically (owner only) |
+| `.statusseen` | Auto-view statuses (owner only) |
+| `.statusreact` | Auto-react to statuses (owner only) |
+| `.getdp` | Get a profile picture |
+| `.jid` | Show the chat/user JID |
+| `.vv` | Reply to a view-once message to unlock it |
+| `.vv2` | Same as vv |
+| `.toimg` | Sticker to image |
+| `.tovideo` | Animated sticker/GIF to video |
+| `.tomp3` | Video to MP3 audio |
+| `.sticker` | Image/video to sticker |
+| `.steal` | Take a sticker and change its pack name |
+| `.💓` and 21 other heart/emoji commands | Reply to a view-once photo/video with the command (for example `.💓`) to unlock and receive it. Emoji commands: 💓 💗 💖 💘 💝 💞 💟 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 😻 😘 🫀 |
+
+## ANTI FEATURES (5)
+
+| Command | What it does |
+|---|---|
+| `.antidelete` | Show deleted messages: `.antidelete on/off` (owner only) |
+| `.antiedit` | Show edited messages: `.antiedit on/off` (owner only) |
+| `.antigali` | Kick members who use abusive words (OFF by default, owner turns it on; bot must be group admin) |
+| `.antilink` | Kick members who post links (OFF by default, owner turns it on; bot must be group admin) |
+| `.antiemoji` | Kick members who send emoji-only messages (OFF by default, owner turns it on; bot must be group admin) |
+
+## GROUP (23)
+
+| Command | What it does |
+|---|---|
+| `.tagall` | Mention all members |
+| `.hidetag` | Hidden mention of all members |
+| `.kick` | Remove a member |
+| `.promote` | Make a member admin |
+| `.demote` | Remove admin rights |
+| `.warn` | Warn a member |
+| `.unwarn` | Remove a warning |
+| `.mute` | Only admins can send messages |
+| `.unmute` | Everyone can send messages |
+| `.lock` | Lock group settings |
+| `.unlock` | Unlock group settings |
+| `.groupinfo` | Group information |
+| `.link` | Group invite link |
+| `.revoke` | Reset the invite link |
+| `.setname` | Change group name |
+| `.setdesc` | Change group description |
+| `.listadmin` | List admins |
+| `.welcome` | Welcome message on/off |
+| `.goodbye` | Goodbye message on/off |
+| `.setwelcome` | Set the welcome text |
+| `.setgoodbye` | Set the goodbye text |
+| `.poll` | Create a poll |
+| `.announce` | Send an announcement to the group |
+
+## FUN (13)
+
+| Command | What it does |
+|---|---|
+| `.meme` | Random meme |
+| `.fact` | Random fact |
+| `.advice` | Random advice |
+| `.pickup` | Pickup line |
+| `.roast` | Roast |
+| `.compliment` | Compliment |
+| `.flip` | Flip a coin |
+| `.roll` | Roll a dice |
+| `.ship` | Ship two people |
+| `.lovemeter` | Love meter |
+| `.truth` | Truth question |
+| `.dare` | Dare |
+| `.emojimix` | Mix two emojis |
+
+## DPZ LAB (8)
+
+| Command | What it does |
+|---|---|
+| `.boydp` | Boy profile picture |
+| `.girldp` | Girl profile picture |
+| `.coupledp` | Couple profile pictures |
+| `.animedp` | Anime profile picture |
+| `.randomdp` | Random profile picture |
+| `.wallpaper` | Wallpaper |
+| `.cat` | Cat picture |
+| `.dog` | Dog picture |
+
+## AI & MORE (9)
+
+| Command | What it does |
+|---|---|
+| `.gpt` | Ask the AI (Gemini): `.gpt <question>` |
+| `.ai` | Ask the AI: `.ai <question>` |
+| `.gemini` | Ask Gemini |
+| `.ask` | Ask the AI |
+| `.imagine` | Generate an image from text |
+| `.weather` | Weather of a city |
+| `.news` | Latest news |
+| `.crypto` | Crypto prices |
+| `.currency` | Currency converter |
+
+
+# AWAIS X MD — Troubleshooting (errors and fixes)
+
+Read the **last lines of the terminal**. The bot prints the real reason of every problem. Most problems are one of the lines below.
+
+## Install problems
+
+| What you see | Why | Fix |
+|---|---|---|
+| `npm error code EALLOWGIT` / "Fetching packages of type git have been disabled" | npm 12 blocks git dependencies by default; Baileys needs one | `cd Awais-X-MD && npm install --allow-git=all` (the project already has `.npmrc` with this, use the latest version) |
+| `git: command not found` | git is not installed | Termux: `pkg install -y git` / Ubuntu: `sudo apt install git` |
+| `node: command not found` or Node older than 18 | Node.js missing/too old | Termux: `pkg install -y nodejs-lts` / others: install Node.js 18 or newer (LTS) |
+| `npm install` fails on `ffmpeg-static` (Android) | That package does not support Android | `npm install --ignore-scripts` (the installer already retries this by itself) |
+| `ffmpeg` not found, audio/video commands fail | ffmpeg missing | Termux: `pkg install -y ffmpeg` / Ubuntu: `sudo apt install ffmpeg` / Windows: `winget install ffmpeg` |
+| `EADDRINUSE` / "Port 3000 is already in use" (Web mode) | Another program or a second copy uses the port | Stop the other copy (`pkill -f node`) or set `WEB_PORT=3001` in `.env` |
+
+## Pairing problems (linking WhatsApp)
+
+| What you see | Why | Fix |
+|---|---|---|
+| Code does not arrive / "Cannot reach WhatsApp yet: connection dropped (428)" | Internet, VPN or data-saver problem, or WhatsApp refuses the connection | Check internet (open a website), switch VPN off, wait. If it repeats for many tries, **stop for a few hours** (every new try can extend a WhatsApp block) |
+| "Couldn't link device" / code rejected on the phone | Wrong or expired code, or WhatsApp temporarily limits linking for this number (often after reinstalling WhatsApp or many tries) | Use the newest code within ~2 minutes. Do not request codes repeatedly. Test with another number or with web.whatsapp.com "Link with phone number": if that fails too, it is a WhatsApp limit — wait 3-24 hours |
+| Phone says "Logging in..." after the code, but the bot never says "Pairing accepted" and a new code appears | WhatsApp rejects the login of the old client version, or the connection drops at that moment (some accounts only) | The bot switches to the current WhatsApp Web version by itself after 2 codes. You can force it: add `WA_VERSION_SOURCE=web` to `.env`. Use stable Wi-Fi (no VPN), update WhatsApp / WhatsApp Business on the phone, remove old Linked Devices, then try ONCE |
+| One number links but another never does (even though it links fine with some other bot) | An old version of the WhatsApp library (Baileys 6.7.18 or older): WhatsApp rejects it for some accounts and it has a known security flaw | Since v2.1 the bot updates it by itself at start (internet needed, `package.json` allows `~6.7.18` = newest 6.7.x). Manual: `cd Awais-X-MD && npm install @whiskeysockets/baileys@6.7.24`. Check: `npm ls @whiskeysockets/baileys` must show 6.7.22 or higher |
+| Number is rejected as invalid | Country code missing | Use the full number with country code: `923001234567`. `03001234567` is also accepted for Pakistan. A number cannot start with 0 |
+| Connection restarts once right after entering the code | Normal (WhatsApp restarts the link, code 515) | Wait 10-15 seconds until "Connected" |
+| "LOGGED OUT" / `401` | The linked device was removed in WhatsApp > Linked Devices, or WhatsApp was reinstalled | Delete the old session (`rm -rf sessions`) and pair again |
+| `440` / "connection replaced" | The same number is running somewhere else (second Termux session, PC, tmux, PM2) | Run only ONE copy: `pkill -f node`, `tmux kill-server`, then start again |
+| "SESSION EXISTS" (Telegram) | An old session for this Telegram user is still stored | Send `/logout`, then `/pair` again |
+| "Too many attempts" (Web mode) | Anti-spam limit (default 8 per IP and 6 per number per hour) | Wait; the owner can change `WEB_MAX_PER_IP_HOUR` / `WEB_MAX_PER_NUMBER_HOUR` in `.env` |
+| "Server is full" (Web/Telegram) | `MAX_WEB_SESSIONS` / `MAX_TELEGRAM_USERS` reached (default 30) | Raise the limit in `.env` if the device has enough RAM (each number uses about 70-100 MB) |
+
+## Telegram mode problems
+
+| What you see | Why | Fix |
+|---|---|---|
+| Console: "bot token is INVALID ... (401)" | Wrong or revoked token | Create a new token with @BotFather (`/revoke`), run `npm run setup` |
+| Console: "another copy of this bot is running ... (409)" | Two copies use the same token | Stop the other copy: `pkill -f node`, `tmux kill-server` |
+| Bot does not answer | You wrote in a group, or never pressed Start | Open the bot in a **private chat** and send `/start` |
+| Owner commands say "Only the bot owner" | `TELEGRAM_OWNER_CHAT_ID` is not your user id | Send `/myid` to the bot (or @userinfobot) and set that number with `npm run setup` |
+| Owner gets no "online" message | The owner never pressed Start on the bot | Open the bot once and press Start |
+| Users are offline after a restart | Sessions reconnect one by one (about 1.5 s per user) | Wait a minute, check `/stats` (owner) |
+
+## Bot behaviour
+
+| What you see | Why | Fix |
+|---|---|---|
+| Bot does not answer "hi" | Commands need the `.` prefix | Send `.menu`, `.ping` |
+| "Only the owner of this bot can use this command" | Settings commands work only from the owner's own WhatsApp account | Send the command from the phone that owns the linked number |
+| Anti-link / anti-gali does nothing | They are OFF by default and the bot must be group admin | Owner: `.antilink on`, and make the bot number a group admin |
+| AI commands say the key is missing | No Gemini key | Add `GEMINI_API_KEY` with `npm run setup` (free key from Google AI Studio) |
+| Bot stops when the Termux screen is off | Android battery saver kills Termux | Settings > Apps > Termux > Battery > Unrestricted, and use `bash run247.sh` (tmux + wake-lock) |
+| Phone notifications stopped while the bot runs | (fixed in v2.1: the bot no longer marks itself online) | Update to the latest version |
+
+## Useful commands
+
+```bash
+bash start.sh              # menu: 1 start, 2 Telegram, 3 Terminal, 4 Web Pair, 5 numbers, 6 settings, 7 system check
+bash run247.sh             # run in the background (Termux/Linux)
+bash run247.sh status      # running or not
+bash run247.sh logs        # live screen (leave: CTRL+B then D)
+bash run247.sh stop        # stop
+npm run setup              # change token / owner / Gemini key
+rm -rf sessions            # forget all WhatsApp logins (pair again afterwards)
+```
+
+
+## Frequently asked questions
+- Is AWAIS X MD free? Yes, MIT license. A Gemini API key (free from Google AI Studio) is optional.
+- Can I run it without a Telegram bot? Yes, use Terminal mode.
+- Can I link several numbers? Yes: Terminal mode up to MAX_NUMBERS, Telegram/Web mode many users.
+- How do I update? `git pull`, then `npm install`, then restart.
+- Where are the logins stored? In the sessions/ folder. Deleting it logs everything out.

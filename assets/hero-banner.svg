@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320">
+  <defs>
+    <linearGradient id="bannerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#030810"/>
+      <stop offset="40%" stop-color="#0a1224"/>
+      <stop offset="100%" stop-color="#0d1a2f"/>
+    </linearGradient>
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="50%" stop-color="#00b4ff"/>
+      <stop offset="100%" stop-color="#7b61ff"/>
+    </linearGradient>
+    <linearGradient id="neonPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7b61ff"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#e0f7ff"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="subGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7b61ff"/>
+      <stop offset="100%" stop-color="#00b4ff"/>
+    </linearGradient>
+    <filter id="bannerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="textGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="lineGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#00e5ff" stroke-width="0.4" opacity="0.12"/>
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="320" fill="url(#bannerBg)"/>
+  <rect width="1200" height="320" fill="url(#grid)"/>
+  
+  <!-- Ambient glow orbs -->
+  <circle cx="180" cy="160" r="120" fill="#00e5ff" opacity="0.06"/>
+  <circle cx="1020" cy="160" r="140" fill="#7b61ff" opacity="0.07"/>
+  <circle cx="600" cy="80" r="90" fill="#00b4ff" opacity="0.04"/>
+  
+  <!-- Top neon line -->
+  <line x1="0" y1="8" x2="1200" y2="8" stroke="url(#neonCyan)" stroke-width="2" opacity="0.7" filter="url(#lineGlow)"/>
+  <line x1="0" y1="14" x2="1200" y2="14" stroke="#00e5ff" stroke-width="0.8" opacity="0.25"/>
+  
+  <!-- Bottom neon line -->
+  <line x1="0" y1="306" x2="1200" y2="306" stroke="url(#neonPurple)" stroke-width="2" opacity="0.7" filter="url(#lineGlow)"/>
+  <line x1="0" y1="312" x2="1200" y2="312" stroke="#7b61ff" stroke-width="0.8" opacity="0.25"/>
+  
+  <!-- Left decorative frame -->
+  <path d="M40 50 L40 80 L70 80" fill="none" stroke="#00e5ff" stroke-width="2" opacity="0.6" filter="url(#lineGlow)"/>
+  <path d="M40 270 L40 240 L70 240" fill="none" stroke="#00e5ff" stroke-width="2" opacity="0.6" filter="url(#lineGlow)"/>
+  
+  <!-- Right decorative frame -->
+  <path d="M1160 50 L1160 80 L1130 80" fill="none" stroke="#7b61ff" stroke-width="2" opacity="0.6" filter="url(#lineGlow)"/>
+  <path d="M1160 270 L1160 240 L1130 240" fill="none" stroke="#7b61ff" stroke-width="2" opacity="0.6" filter="url(#lineGlow)"/>
+  
+  <!-- Side accent bars -->
+  <rect x="0" y="60" width="4" height="200" fill="url(#neonCyan)" opacity="0.5"/>
+  <rect x="1196" y="60" width="4" height="200" fill="url(#neonPurple)" opacity="0.5"/>
+  
+  <!-- Main Title -->
+  <text x="600" y="130" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="68" font-weight="800" letter-spacing="6" fill="url(#textGrad)" filter="url(#textGlow)">AWAIS X MD</text>
+  
+  <!-- Subtitle -->
+  <text x="600" y="178" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" letter-spacing="4" fill="#a0c4ff" opacity="0.95">NEXT-GENERATION MULTI-DEVICE WHATSAPP AUTOMATION</text>
+  
+  <!-- Divider line under subtitle -->
+  <line x1="340" y1="200" x2="860" y2="200" stroke="url(#neonCyan)" stroke-width="1.5" opacity="0.5" filter="url(#lineGlow)"/>
+  
+  <!-- Bottom branding -->
+  <text x="600" y="245" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" letter-spacing="3" fill="url(#subGrad)">BUILT BY AWAIS DEV  ·  POWERED BY X HACKER TEAM</text>
+  
+  <!-- Tech accent dots -->
+  <circle cx="120" cy="160" r="3" fill="#00e5ff" opacity="0.7" filter="url(#bannerGlow)"/>
+  <circle cx="1080" cy="160" r="3" fill="#7b61ff" opacity="0.7" filter="url(#bannerGlow)"/>
+  <circle cx="200" cy="100" r="2" fill="#00b4ff" opacity="0.5"/>
+  <circle cx="1000" cy="220" r="2" fill="#00e5ff" opacity="0.5"/>
+  <circle cx="280" cy="240" r="1.5" fill="#7b61ff" opacity="0.4"/>
+  <circle cx="920" cy="80" r="1.5" fill="#00e5ff" opacity="0.4"/>
+  
+  <!-- Small geometric accents -->
+  <polygon points="90,145 100,160 90,175 80,160" fill="none" stroke="#00e5ff" stroke-width="1.2" opacity="0.45"/>
+  <polygon points="1110,145 1120,160 1110,175 1100,160" fill="none" stroke="#7b61ff" stroke-width="1.2" opacity="0.45"/>
+</svg>

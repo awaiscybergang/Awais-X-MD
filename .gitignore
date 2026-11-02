@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Per-user data - created on each user's own device, NEVER uploaded
+# (WhatsApp login = sessions/, tokens/keys = .env, bot settings = config.json)
+config.json
+sessions/
+temp/
+tmp/
+*.session
+*.json.bak
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build / Cache
+.cache/
+dist/
+build/

@@ -1,0 +1,157 @@
+AWAIS X MD - FIX NOTES (pairing "LOGGED OUT" / "Connection Closed" / "PAIRING FAILED")
+
+WHAT WAS WRONG (awaismain.js)
+ 1. The pairing code was requested after a blind 2-second wait. If WhatsApp closed the socket in
+    that time, requestPairingCode() still wrote a fake "me" + pairingCode into the session files.
+ 2. The automatic reconnect then reused those half-written files. WhatsApp answers 401 to that, and the
+    bot treated 401 as "LOGGED OUT": it DELETED the session and the code you were typing became useless.
+ 3. After a successful pairing WhatsApp restarts the connection once (code 515). The old code asked for
+    a NEW pairing code again on that restart, which could also break the fresh login.
+ 4. Old sockets were never fully detached, so two sockets could fight each other.
+ 5. No reason code was ever printed, so errors looked identical.
+
+WHAT CHANGED
+ - Pairing code is requested only when WhatsApp says the socket is ready (first "qr" signal; 8s fallback).
+ - "Is this number really linked?" is now decided by creds.account / device id, not by creds.registered.
+ - An unlinked number always starts from a clean folder; failed tries never poison the next one.
+ - 401 on a never-linked number = retry with a fresh code (NOT a logout). Real logout still removes the session.
+ - After pairing: 515 restart reconnects within ~1s without asking for a new code.
+ - Code expires after ~2 minutes -> a new one is created automatically (max 6 tries, then it stops and tells
+   you to wait 10-15 min, so WhatsApp does not rate-limit your number).
+ - Every disconnect prints its reason (405 / 408 / 428 / 440 / 403 ...) with a plain fix.
+ - 440 (same session open in another copy) and 403 stop the loop instead of fighting forever.
+ - Telegram /logout and the Logout button now stop the session properly (no zombie reconnect).
+ - New: run247.sh (tmux background runner, boot script for Termux), start.sh crash-loop protection.
+
+HOW TO USE
+ Termux:   bash start.sh                  (menu: press 3 = Terminal mode, type YOUR number, enter the code, wait for "Connected", CTRL+C)
+           bash run247.sh                (24/7 in the background)   | bash run247.sh logs | bash run247.sh stop
+           bash run247.sh boot           (auto-start after reboot, needs the Termux:Boot app)
+ Linux/VPS: same commands, or  pm2 start ecosystem.config.js  (after pairing once)
+
+PAIRING TIPS
+ - Type the 8-character code in WhatsApp as soon as it appears. Do NOT type "add" again while waiting.
+ - Use only ONE running copy of the bot per number (check: pkill -f "node index.js", tmux kill-server).
+ - Turn off VPN / data saver / private DNS tricks while pairing; Wi-Fi or mobile data both work.
+ - If the log says 405: npm i @whiskeysockets/baileys@latest   (WhatsApp changed its protocol version).
+
+LAPTOP / OTHER SYSTEMS (added)
+ - Windows:  start.bat (new) = 24/7 launcher, restarts after a crash. install-windows.bat now ends in start.bat
+             and was converted to Windows line endings (LF-only .bat files can break "goto :label").
+ - Linux/macOS: install scripts now install tmux; run247.sh keeps the laptop awake (caffeinate / systemd-inhibit).
+ - run247.sh refuses to start in the background if no number is linked yet (it cannot ask for the number there).
+ - ecosystem.config.js (PM2): crash-loop protection (min_uptime) and no restart on exit codes 0/2.
+ - README.md / llms.txt: updated commands, laptop 24/7 table, new troubleshooting rows (405, 428, 440, 403, 515).
+ NOT TESTED on a real Windows PC or real WhatsApp (no internet/Windows in my sandbox): the pairing logic was tested
+ against a simulated WhatsApp, the Linux/Termux scripts with simulated tmux.
+
+NEVER STOPS BY ITSELF (added)
+ - Linked number: reconnects forever (2-15 s between tries), also in Telegram mode (the old 15-try limit is gone).
+   When the internet comes back it continues by itself ("back online ... no restart needed"). No second start needed.
+ - Only these stop a linked number: CTRL+C / run247.sh stop, removing the linked device on the phone (real logout),
+   or 440 (same number open in a second copy of the bot). 403 = slow retry every 10 minutes.
+ - Pairing: internet problems are retried without limit; only never-entered codes are limited (6 codes).
+ - Version lookup has an 8 s timeout (a dead Wi-Fi can no longer freeze a reconnect).
+ - "CONNECTED" message is sent once, not after every reconnect. Telegram polling errors are logged once a minute.
+
+ROUND 3 - fixes from your Termux screenshot
+ - ROOT CAUSE: current Baileys sets creds.registered = true as soon as a pairing CODE is requested (GitHub issue #2008).
+   The bot trusted that flag, so a half-finished pairing looked like a saved, linked number: it was re-used without
+   asking for the number (that is why it "paired by itself"), WhatsApp answered 401 and the session was deleted.
+   Now "linked" means creds.account / device id only (set by WhatsApp after the code was ACCEPTED).
+ - Unfinished pairings are removed at start (no more auto-pairing of an old number).
+ - If WhatsApp drops the socket within seconds after giving a code (rate limit) the bot waits 60 s, tries max 3 times,
+   then stops with a clear message instead of burning more codes. Disconnect reasons now show WhatsApp's own text.
+ - The 7-option menu was NOT removed (lib/menu.js and index.js are identical to your original). It is skipped only when
+   you start with --terminal / --telegram. First pairing now uses plain  bash start.sh  (menu -> 3).
+
+ROUND 4 - the 7-option menu (kept, tested)
+ - Nothing was removed from the menu: 1 Start | 2 Telegram mode | 3 Terminal mode | 4 Manage numbers | 5 Settings | 6 System check | 7 Exit.
+ - Only ONE line of lib/menu.js changed: its "is this number linked?" check no longer trusts creds.registered
+   (same reason as awaismain.js), so an unfinished pairing is no longer shown as "paired".
+ - Tested in a real terminal (pty): menu shows, 4/5/6/2/1/7 work, 3 asks YOUR number and shows the code for that number.
+
+ROUND 5 - Telegram Owner Chat ID + security + completeness (public GitHub ready)
+ - TELEGRAM_OWNER_CHAT_ID is now required when choosing Telegram mode (menu option 2).
+   How to get it: Telegram → @userinfobot or @getidsbot → Start → copy the number ID.
+ - Setup menu (option 2) asks for Bot Token + Owner Chat ID (required) + optional Owner WhatsApp number.
+ - Settings menu (option 5) now has: Gemini key | Owner WA number | Telegram Owner Chat ID | Gemini model.
+ - /setimage is restricted to the owner Chat ID only.
+ - When any user successfully links WhatsApp, the owner receives a Telegram notification.
+ - New command: /myid  (shows the user's Telegram Chat ID so they can set it as owner).
+ - isReady() / doctor / firstrun / start checks all require both token AND owner Chat ID for Telegram mode.
+ - .env.example updated with clear comments.
+ - Slow internet / WhatsApp down: already handled (polling_error rate-limited, reconnect forever for linked numbers,
+   version lookup timeout, pairing code limits, clear reason codes). No further change needed.
+ - All previous pairing / LOGGED OUT / 401 / 515 / 440 fixes remain intact.
+
+ROUND 6 - Web Pair mode (professional multi-user pairing website)
+ - New mode: BOT_MODE=web  (menu option 4, or  npm run web  /  node index.js --web)
+ - Premium dark-theme website: AWAIS X MD branding, features grid, pairing form, live code display.
+ - Footer: WhatsApp Channel button (https://whatsapp.com/channel/0029VbBzlMlIt5rzSeMBE922)
+           + "© 2027 Powerful MD Bot Awais x Hacker"
+ - Multiple users can pair at the same time from the browser (max 15 concurrent pairing jobs).
+ - Sessions saved under sessions/web-<number>/ and restored on restart.
+ - Public URL on Termux:  npx cloudflared tunnel --url http://localhost:3000
+ - express added to dependencies + auto-install list.
+ - Menu expanded to 8 options. README + .env.example updated.
+
+
+ROUND 7 - full audit before the public GitHub release (v2.1.0)
+ BIG BUGS FIXED
+ - Commands had NO prefix check: the first character of EVERY message was cut off. "Hai" ran the AI command, "Evening" ran
+   the view-once unlock, "xping" ran ping. A message is now a command only when it starts with "." (CONFIG.PREFIX).
+ - Group auto-kick kicked people for greetings: "Assalamualaikum"/"Salam" contain "sala", "abc" contains "bc", "explode"
+   contains "lode". Abusive words are now matched as WHOLE words only, ambiguous short words were removed, and
+   antigali / antilink / antiemoji are OFF by default (the owner switches them on with .antilink on ...).
+ - Telegram mode forgot every user after a restart (crash, reboot, Termux closed): users had to /pair again. Saved sessions are
+   now restored automatically (one every 1.5s), without sending "connected" messages again.
+ - Anti-Delete used the wrong WhatsApp event, and Anti-Edit always showed "[edited media]" as the new text. Both now read
+   messages.update correctly; a second edit shows the right "Before"; no duplicate notices; own deletions are not reported.
+ - Settings were shared by ALL users (one global config.json): one user's .autoreacts off changed everybody's bot after a restart,
+   and anti-* switches never saved. Every number now has its own sessions/<id>/settings.json.
+ - Any stranger could change settings, enable auto-kick or change the menu banner by messaging the number. These commands are
+   now for the account owner only (messages typed on the owner's own phone). .setimage changes only that number's banner;
+   Telegram /setimage (owner) sets the shared default.
+ SECURITY / ABUSE
+ - Telegram: works in private chats only (in a group anyone could log out someone else); owner check is strict
+   (no owner ID = nobody is admin); /logout now also removes the linked device on WhatsApp; MAX_TELEGRAM_USERS cap (30);
+   30s cooldown between /pair; one WhatsApp number cannot be linked by two Telegram users; new owner command /stats.
+ - /pair accepts "+92 300 1234567", "0300-1234567", "0092300..." (before: only the first group of digits was used = wrong number).
+   Numbers without a country code (starting with 0) get a clear error.
+ - Web Pair: per-IP and per-number rate limits, MAX_WEB_SESSIONS cap, same visitor re-pressing the button does not request a
+   new code, XSS-safe page, 20s fetch timeouts, Copy-code button, fonts no longer block the page on slow internet,
+   port-in-use exits with a clear message instead of idling.
+ STABILITY
+ - A saved WhatsApp login that WhatsApp no longer accepts (QR requested) is cleaned once (before: message every ~20s).
+ - config.json and settings are written atomically; temp/ and tmp/ files older than 1 hour are removed automatically.
+ - run247.sh now supports Web mode and keeps bot.log under 5 MB; PM2 memory limit raised to 1G for multi-user modes.
+ - .env writer no longer swallows blank lines; Telegram owner ID must be a positive user id.
+ TESTED (simulated WhatsApp/Telegram, no real network): command parsing, owner-only gate, per-session settings, Telegram
+ restore/pair/logout/cooldown/duplicate number, anti-delete/anti-edit, web server limits. NOT tested on a real WhatsApp account.
+
+ROUND 8 - Termux with npm 12 / Node 24 (fresh install failed)
+ - npm 12 refuses git dependencies by default: "EALLOWGIT - Fetching packages of type git have been disabled"
+   (Baileys has one). Fixed in 3 places: .npmrc (allow-git=all, covers a manual npm install), lib/bootstrap.js (sets
+   NPM_CONFIG_ALLOW_GIT=all only when npm >= 11, so older npm prints no warning) and all install-*.sh / install-windows.bat.
+   If it still happens, the error text now says exactly what to run:  npm install --allow-git=all
+
+ROUND 9 - final audit before GitHub
+ - WhatsApp refusing the connection (restricted number / too many tries): the bot now slows down by itself (30s .. 5 min) instead of
+   retrying every 20s, tells the user what is happening after 6 failures, and in Telegram / Web mode stops after 30 tries.
+ - markOnlineOnConnect is now false: with true the owner's phone stops ringing for new WhatsApp messages while the bot runs.
+ - Smoke test: all 146 commands in a private chat and in a group (876 calls) -> no crash; Web Pair flow tested end to end
+   (number -> code on the website -> pairing -> restart -> connected).
+ - Repo check: no secrets in any file; .gitignore keeps .env, sessions/, config.json, node_modules out of GitHub.
+
+ROUND 10 - "some numbers link, some never do"
+ - WhatsApp has been checking the client version more strictly in 2026. After 2 pairing codes without a login the bot now switches to
+   the CURRENT WhatsApp Web version (read from web.whatsapp.com); WA_VERSION_SOURCE=web in .env forces it. The normal path (which works
+   for many numbers) is unchanged.
+
+ROUND 11 - the library itself was old
+ - The project pinned Baileys 6.7.18 (mid-2025). The maintainers' own release notes say: upgrade to the latest legacy version
+   (6.7.22+) because of a security flaw, and 6.7.24 was released in July 2026. WhatsApp has been rejecting old clients for some
+   accounts only ("Logging in..." on the phone, but no link) - this matches "number A links, number B never does".
+   package.json now allows ~6.7.18 (= newest 6.7.x, cannot fail with "version not found"), and lib/bootstrap.js updates an installed
+   6.7.21-or-older automatically at start (a failed update never stops a working bot; a 7.x chosen by the owner is left alone).

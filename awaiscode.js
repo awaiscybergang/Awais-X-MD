@@ -22,13 +22,20 @@ try { playdl = require('play-dl'); } catch {}
 const yt = require('./lib/youtube');
 const { toAudio } = require('./lib/converter');
 
-// Per session settings store (in-memory + config fallback)
+// Per session settings store.
+// Every WhatsApp number has its OWN settings file: sessions/<id>/settings.json (so one user can never change
+// another user's bot, and settings survive a restart). config.json only holds the shared DEFAULTS.
 const sessionSettings = {}; // chatId -> settings object
+
+function settingsFile(chatId) {
+    return path.join(CONFIG.SESSIONS_DIR, String(chatId), 'settings.json');
+}
 
 function getSessionSettings(chatId) {
     if (!sessionSettings[chatId]) {
         const cfg = loadConfig();
-        sessionSettings[chatId] = {
+        const kick = CONFIG.DEFAULT_ANTI_KICK === true;
+        const base = {
             autoreacts: cfg.autoreacts !== false,
             autotyping: cfg.autotyping !== false,
             autorecording: cfg.autorecording === true,
@@ -36,14 +43,18 @@ function getSessionSettings(chatId) {
             statusReact: true,
             antidelete: cfg.antidelete !== false,
             antiedit: cfg.antiedit !== false,
-            antigali: cfg.antigali !== false,
-            antilink: cfg.antilink !== false,
-            antiemoji: cfg.antiemoji !== false,
+            antigali: kick,
+            antilink: kick,
+            antiemoji: kick,
             welcome: cfg.welcome !== false,
             goodbye: cfg.goodbye !== false,
             welcomeMsg: cfg.welcomeMsg || '',
-            goodbyeMsg: cfg.goodbyeMsg || ''
+            goodbyeMsg: cfg.goodbyeMsg || '',
+            botImg: ''
         };
+        let own = {};
+        try { own = JSON.parse(fs.readFileSync(settingsFile(chatId), 'utf8')) || {}; } catch { /* first start: defaults */ }
+        sessionSettings[chatId] = Object.assign(base, own);
     }
     return sessionSettings[chatId];
 }
@@ -51,17 +62,49 @@ function getSessionSettings(chatId) {
 function setSessionSetting(chatId, key, val) {
     const s = getSessionSettings(chatId);
     s[key] = val;
-    const cfg = loadConfig();
-    const persistKeys = ['autoreacts', 'autotyping', 'autorecording', 'antidelete', 'antiedit', 'welcome', 'goodbye', 'welcomeMsg', 'goodbyeMsg'];
-    if (persistKeys.includes(key)) {
-        cfg[key] = val;
-        saveConfig(cfg);
-    }
+    const f = settingsFile(chatId);
+    try {
+        if (fs.existsSync(path.dirname(f))) {          // the session folder is gone after a logout: do not re-create it
+            fs.writeFileSync(f + '.tmp', JSON.stringify(s, null, 2));
+            fs.renameSync(f + '.tmp', f);
+        }
+    } catch (e) { console.log('[' + chatId + '] Could not save the setting "' + key + '": ' + e.message); }
 }
 
-// Store for anti-delete / anti-edit (message cache)
-const msgCache = new Map(); // key = `${jid}_${id}` -> full msg
-const CACHE_LIMIT = 2000;
+// Forget everything about a session that was logged out / removed (settings + message cache)
+function clearSessionSettings(chatId) {
+    delete sessionSettings[chatId];
+    sessionCaches.delete(String(chatId));
+}
+
+// ── Message cache for anti-delete / anti-edit: one small cache PER session ──
+// (a shared cache let busy sessions push out the messages of all others, and mixed up private chats)
+const CACHE_LIMIT = 1000;
+const sessionCaches = new Map(); // chatId -> Map(`${jid}_${id}` -> msg)
+const msgCache = new Map();      // kept only for old imports; not used any more
+
+function cacheKey(jid, id) { return jid + '_' + id; }
+
+function cacheMessage(chatId, msg) {
+    if (!msg || !msg.key || !msg.key.id || !msg.message) return;
+    if (msg.key.remoteJid === 'status@broadcast') return;
+    if (msg.message.protocolMessage || msg.message.reactionMessage || msg.message.senderKeyDistributionMessage && Object.keys(msg.message).length === 1) return;
+    const k = String(chatId);
+    let m = sessionCaches.get(k);
+    if (!m) { m = new Map(); sessionCaches.set(k, m); }
+    m.set(cacheKey(msg.key.remoteJid, msg.key.id), msg);   // keep the original object (Buffers/Longs stay valid for media recovery)
+    if (m.size > CACHE_LIMIT) m.delete(m.keys().next().value);
+}
+
+function getCachedMessage(chatId, jid, id) {
+    const m = sessionCaches.get(String(chatId));
+    return m ? m.get(cacheKey(jid, id)) : undefined;
+}
+
+function updateCachedMessage(chatId, jid, id, message) {
+    const old = getCachedMessage(chatId, jid, id);
+    if (old) old.message = message;
+}
 
 // ── Helpers ───────────────────────────────────────
 const safeFileName = (t, fb) => (String(t || '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().slice(0, 60)) || fb;
@@ -850,7 +893,11 @@ async function handleCommands(sock, msg, sessionChatId) {
         || '';
     const cmd = text.trim();
     const cmdL = cmd.toLowerCase();
-    const args = cmd.slice(1).trim().split(/\s+/);
+    // A message is a command ONLY if it starts with the prefix (default "."). Before, the first character was cut
+    // off blindly, so normal chat like "Hai" ran the AI command ("ai") and "Evening" ran the view-once unlock.
+    const PREFIX = CONFIG.PREFIX || '.';
+    const hasPrefix = cmd.startsWith(PREFIX) && cmd.length > PREFIX.length;
+    const args = hasPrefix ? cmd.slice(PREFIX.length).trim().split(/\s+/) : [''];
     const command = (args[0] || '').toLowerCase();
     const q = args.slice(1).join(' ').trim();
 
@@ -879,13 +926,29 @@ async function handleCommands(sock, msg, sessionChatId) {
         } catch {}
     }
 
+    // ── PERMISSIONS ──
+    // Commands that change the bot's settings are for the OWNER of this WhatsApp account only (messages typed on the
+    // owner's own phone arrive as fromMe). Strangers who message the number can use normal commands (.menu, .play ...)
+    // but cannot switch features on/off, change the banner, or enable auto-kick.
+    const OWNER_ONLY = ['autoreacts', 'autotyping', 'autorecording', 'statusseen', 'statusreact', 'antidelete', 'antiedit',
+        'antigali', 'antilink', 'antiemoji', 'setimage', 'setbanner'];
+    if (command && OWNER_ONLY.includes(command) && !isFromMe) {
+        await sendText(sock, from, '🔒 Only the owner of this bot can use this command.', msg);
+        return true;
+    }
+
     // ── GENERAL ──
     if (command === 'menu' || command === 'help') {
-        // Image hamesha show hogi (config se ya default link se)
-        const botImg = getBotImg() || DEFAULT_MENU_IMG;
+        // Image hamesha show hogi (this number's banner -> shared default -> local assets/menu.jpg -> default URL)
+        const botImg = settings.botImg || getBotImg();
+        const localImg = path.join(__dirname, 'assets', 'menu.jpg');
         try {
+            // Priority: .setimage URL -> local assets/menu.jpg -> default URL
+            const imgSrc = botImg
+                ? { url: botImg }
+                : (fs.existsSync(localImg) ? fs.readFileSync(localImg) : { url: DEFAULT_MENU_IMG });
             await sock.sendMessage(from, {
-                image: { url: botImg },
+                image: imgSrc,
                 caption: getFullMenu()
             }, { quoted: msg });
         } catch {
@@ -939,10 +1002,8 @@ async function handleCommands(sock, msg, sessionChatId) {
             await sendText(sock, from, '❌ Image URL do!\n*Example:* .setimage https://i.ibb.co/xxx.jpg', msg);
             return true;
         }
-        const cfg = loadConfig();
-        cfg.BOT_IMG = url;
-        saveConfig(cfg);
-        await sendText(sock, from, '✅ Bot image saved! Check with .menu', msg);
+        setSessionSetting(sessionChatId, 'botImg', url);   // only THIS number's menu banner changes
+        await sendText(sock, from, '✅ Bot image saved for this number! Check with .menu', msg);
         return true;
     }
 
@@ -1074,19 +1135,19 @@ async function handleCommands(sock, msg, sessionChatId) {
     if (command === 'antigali') {
         if (q === 'on') { setSessionSetting(sessionChatId, 'antigali', true); await sendText(sock, from, '✅ Anti-Abuse *ON*', msg); }
         else if (q === 'off') { setSessionSetting(sessionChatId, 'antigali', false); await sendText(sock, from, '✅ Anti-Abuse *OFF*', msg); }
-        else await sendText(sock, from, `Anti-Abuse: *${settings.antigali !== false ? 'ON' : 'OFF'}*\nUsage: .antigali on/off`, msg);
+        else await sendText(sock, from, `Anti-Abuse: *${settings.antigali ? 'ON' : 'OFF'}*\nUsage: .antigali on/off`, msg);
         return true;
     }
     if (command === 'antilink') {
         if (q === 'on') { setSessionSetting(sessionChatId, 'antilink', true); await sendText(sock, from, '✅ Anti-Link *ON*', msg); }
         else if (q === 'off') { setSessionSetting(sessionChatId, 'antilink', false); await sendText(sock, from, '✅ Anti-Link *OFF*', msg); }
-        else await sendText(sock, from, `Anti-Link: *${settings.antilink !== false ? 'ON' : 'OFF'}*\nUsage: .antilink on/off`, msg);
+        else await sendText(sock, from, `Anti-Link: *${settings.antilink ? 'ON' : 'OFF'}*\nUsage: .antilink on/off`, msg);
         return true;
     }
     if (command === 'antiemoji') {
         if (q === 'on') { setSessionSetting(sessionChatId, 'antiemoji', true); await sendText(sock, from, '✅ Anti-Emoji *ON*', msg); }
         else if (q === 'off') { setSessionSetting(sessionChatId, 'antiemoji', false); await sendText(sock, from, '✅ Anti-Emoji *OFF*', msg); }
-        else await sendText(sock, from, `Anti-Emoji: *${settings.antiemoji !== false ? 'ON' : 'OFF'}*\nUsage: .antiemoji on/off`, msg);
+        else await sendText(sock, from, `Anti-Emoji: *${settings.antiemoji ? 'ON' : 'OFF'}*\nUsage: .antiemoji on/off`, msg);
         return true;
     }
 
@@ -1095,7 +1156,7 @@ async function handleCommands(sock, msg, sessionChatId) {
 
     // View-Once unlock commands (reply to view-once media)
     const vvEmojis = ['vv', 'vv2', '💓', '💗', '💖', '💘', '💝', '💞', '💟', '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '😻', '😘', '🫀'];
-    if (vvEmojis.includes(command) || command.startsWith('v')) {
+    if (vvEmojis.includes(command)) {
         const emoji = ['vv', 'vv2'].includes(command) ? '👁️' : (command.replace(/^v/, '') || '👁️');
         await handleViewOnce(sock, from, msg, emoji.length < 3 ? emoji : command);
         return true;
@@ -1579,7 +1640,7 @@ async function handleCommands(sock, msg, sessionChatId) {
     }
     if (command === 'news') {
         try {
-            const r = await axios.get('https://www.reddit.com/r/worldnews/top.json?limit=5', { headers: { 'User-Agent': 'AwaisMD/1.0' } });
+            const r = await axios.get('https://www.reddit.com/r/worldnews/top.json?limit=5', { timeout: 20000, headers: { 'User-Agent': 'AwaisMD/1.0' } });
             const posts = r.data?.data?.children || [];
             let t = '📰 *Top News*\n\n';
             posts.forEach((p, i) => { t += `${i + 1}. ${p.data.title}\n`; });
@@ -1612,19 +1673,19 @@ async function handleCommands(sock, msg, sessionChatId) {
 
     // ── AUTO SAFETY (group non-admin) ──
     if (isGroup && botAdmin && !isAdmin && !isFromMe) {
-        if (settings.antigali !== false && hasGali(text)) {
+        if (settings.antigali && hasGali(text)) {
             await sock.sendMessage(from, { text: `🚫 @${senderN} *ABUSIVE LANGUAGE!*\n❌ KICK!\n${CONFIG.POWERED_BY}`, mentions: [sender] });
             await new Promise(r => setTimeout(r, 800));
             try { await sock.groupParticipantsUpdate(from, [sender], 'remove'); } catch {}
             return true;
         }
-        if (settings.antiemoji !== false && isEmojiOnly(text)) {
+        if (settings.antiemoji && isEmojiOnly(text)) {
             await sock.sendMessage(from, { text: `🚫 @${senderN} *Emoji-only messages not allowed!*\n❌ KICK!`, mentions: [sender] });
             await new Promise(r => setTimeout(r, 800));
             try { await sock.groupParticipantsUpdate(from, [sender], 'remove'); } catch {}
             return true;
         }
-        if (settings.antilink !== false && /(https?:\/\/|www\.|t\.me\/|chat\.whatsapp\.com\/)/i.test(text)) {
+        if (settings.antilink && /(https?:\/\/|www\.|t\.me\/|chat\.whatsapp\.com\/)/i.test(text)) {
             await sock.sendMessage(from, { text: `🚫 @${senderN} *Links are not allowed!*\n❌ KICK!`, mentions: [sender] });
             await new Promise(r => setTimeout(r, 800));
             try { await sock.groupParticipantsUpdate(from, [sender], 'remove'); } catch {}
@@ -1661,5 +1722,9 @@ module.exports = {
     getSessionSettings,
     setSessionSetting,
     getFullMenu,
-    msgCache
+    msgCache,
+    clearSessionSettings,
+    cacheMessage,
+    getCachedMessage,
+    updateCachedMessage
 };

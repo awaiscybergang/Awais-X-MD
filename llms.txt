@@ -1,0 +1,53 @@
+# AWAIS X MD
+
+> AWAIS X MD (also written Awais MD or Awais-X-MD) is a free, open-source multi-device WhatsApp bot built with Node.js on the Baileys 6.7.18 library. It has 167 commands in 12 categories, Gemini AI chat and image generation, media downloaders, Islamic tools, anti-delete/anti-edit/anti-link protection and group management. It runs in Telegram Bot mode (multi-user, /pair), Web Pair mode (a pairing website for many users) or Terminal mode (no Telegram bot, pairing code in Termux/terminal, several numbers on one device). Current version: 2.1.0.
+
+Owner: AWAIS DEV. Team: X HACKER TEAM. License: MIT. Requires Node.js 18+. Default command prefix is "." (dot). Unofficial project, not affiliated with WhatsApp or Meta; automation may violate WhatsApp Terms of Service, so a secondary number is recommended. Some commands rely on third-party download/AI APIs that can change.
+
+## Documentation
+
+- [README](https://github.com/awaiscybergang/Awais-X-MD#readme): overview, all 167 commands by category, three modes, installation for Termux, VPS, Windows, Linux and macOS, configuration, pairing, troubleshooting and FAQ
+- [llms-full.txt](https://github.com/awaiscybergang/Awais-X-MD/blob/main/llms-full.txt): EVERYTHING in one file (what it is, how to install and run on Termux/VPS/Windows/Linux/macOS, modes, settings, all 167 commands, fixes for every common error). Read this first.
+- [COMMANDS.md](https://github.com/awaiscybergang/Awais-X-MD/blob/main/COMMANDS.md): all 167 commands with what each one does
+- [TROUBLESHOOTING.md](https://github.com/awaiscybergang/Awais-X-MD/blob/main/TROUBLESHOOTING.md): error message -> cause -> fix (EALLOWGIT, 401, 440, 428, pairing code problems, Telegram 401/409 ...)
+- [CHANGELOG.md](https://github.com/awaiscybergang/Awais-X-MD/blob/main/CHANGELOG.md): versions
+- [Repository](https://github.com/awaiscybergang/Awais-X-MD): source code and releases
+- [package.json](https://github.com/awaiscybergang/Awais-X-MD/blob/main/package.json): npm scripts (start, terminal, telegram, web, setup, add, forever, bg, stop, logs) and dependencies
+- [.env.example](https://github.com/awaiscybergang/Awais-X-MD/blob/main/.env.example): environment variables (BOT_MODE, MAX_NUMBERS, WHATSAPP_NUMBER, TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID, MAX_TELEGRAM_USERS, WEB_PORT, MAX_WEB_SESSIONS, OWNER_NUMBER, GEMINI_API_KEY, GEMINI_MODEL, FFMPEG_PATH)
+
+## Installation
+
+- [install-termux.sh](https://github.com/awaiscybergang/Awais-X-MD/blob/main/install-termux.sh): one-shot installer for Android Termux
+- [install-vps.sh](https://github.com/awaiscybergang/Awais-X-MD/blob/main/install-vps.sh): installer for Ubuntu/Debian VPS with PM2
+- [install-linux.sh](https://github.com/awaiscybergang/Awais-X-MD/blob/main/install-linux.sh), [install-macos.sh](https://github.com/awaiscybergang/Awais-X-MD/blob/main/install-macos.sh), [install-windows.bat](https://github.com/awaiscybergang/Awais-X-MD/blob/main/install-windows.bat): installers for laptops/PCs
+- [start.sh](https://github.com/awaiscybergang/Awais-X-MD/blob/main/start.sh): 24/7 launcher with auto-restart and Termux wake-lock; [start.bat](https://github.com/awaiscybergang/Awais-X-MD/blob/main/start.bat) is the Windows version
+- [run247.sh](https://github.com/awaiscybergang/Awais-X-MD/blob/main/run247.sh): runs the bot 24/7 in the background with tmux (Termux, Linux, macOS), plus a Termux boot script
+- [ecosystem.config.js](https://github.com/awaiscybergang/Awais-X-MD/blob/main/ecosystem.config.js): PM2 configuration
+
+## Features
+
+- AI: Gemini chat (.ai, .gpt, .gemini, .ask) and image generation (.imagine)
+- Downloaders: YouTube, TikTok, Instagram, Facebook, Twitter/X, MediaFire
+- Islamic tools: Quran, Hadith, Dua, Tasbeeh, prayer times, Hijri date
+- Protection: anti-delete, anti-edit; anti-link, anti-gali, anti-emoji (auto-kick, off by default, owner switches them on)
+- Safety: commands need the "." prefix; settings commands work only from the owner's own WhatsApp account; settings are stored per number
+- Groups: tagall, hidetag, kick, promote/demote, warn, mute/lock, welcome/goodbye, polls
+- Media: stickers, view-once unlock (.vv, .vv2), converters
+- Categories (12): General, YouTube, Download, Student Lab, Developer Tools, Islamic, Awais Tools, Anti Features, Group, Fun, DPZ Lab, AI & More
+
+## Modes
+
+- Telegram Bot mode: multi-user, each Telegram private chat pairs its own WhatsApp via /pair (needs TELEGRAM_BOT_TOKEN and TELEGRAM_OWNER_CHAT_ID); saved sessions reconnect after a restart; owner commands /setimage and /stats; run with `npm run telegram`
+- Web Pair mode: pairing website with rate limits, users enter their number in the browser; run with `npm run web`
+- Terminal mode: no Telegram bot, pairing code printed in Termux/terminal; manage numbers with add, list, remove, help (max 5 by default); run with `npm run terminal`
+
+## Community
+
+- [YouTube](https://www.youtube.com/@coreacademi): tutorials and updates
+- [WhatsApp Channel](https://whatsapp.com/channel/0029VbBzlMlIt5rzSeMBE922): announcements
+- [Telegram](https://t.me/awaishacker1): support
+- [Free VPS on Telegram](https://t.me/awavpshosting): VPS hosting community (managed by that channel, not by this repository)
+
+## Optional
+
+- [LICENSE](https://github.com/awaiscybergang/Awais-X-MD/blob/main/LICENSE): MIT license

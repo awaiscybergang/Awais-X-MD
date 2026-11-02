@@ -11,6 +11,7 @@ const fs = require('fs');
 const CONFIG = {
     // Telegram
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
+    TELEGRAM_OWNER_CHAT_ID: process.env.TELEGRAM_OWNER_CHAT_ID || '',
     OWNER_NUMBER: process.env.OWNER_NUMBER || '923295533214',
     GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
 
@@ -36,6 +37,10 @@ const CONFIG = {
     DEFAULT_STATUS_SEEN: true,
     DEFAULT_STATUS_REACT: true,
 
+    // Auto-kick protections (antigali / antilink / antiemoji) are OPT-IN: a bot that kicks people by itself
+    // must never surprise its owner. Each WhatsApp owner switches them on with  .antigali on  .antilink on  .antiemoji on
+    DEFAULT_ANTI_KICK: false,
+
     // Limits
     YT_MAX_ACTIVE: 3,
     MAX_WARN: 3,
@@ -53,8 +58,11 @@ function loadConfig() {
     }
 }
 
+// Write atomically (temp file + rename) so a crash / power loss can never leave a half-written config.json
 function saveConfig(cfg) {
-    fs.writeFileSync(CONFIG.CONFIG_JSON, JSON.stringify(cfg, null, 2));
+    const tmp = CONFIG.CONFIG_JSON + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2));
+    fs.renameSync(tmp, CONFIG.CONFIG_JSON);
 }
 
 function getBotImg() {
@@ -67,19 +75,21 @@ function getMenuSong() {
     return fs.existsSync(p) ? p : null;
 }
 
-// Gali list for anti-abuse
+// Gali list for anti-abuse. Matched as WHOLE WORDS only (never as a part of another word), so greetings like
+// "Assalamualaikum" / "Salam", or words like "abc", "explode", "Claudia" are never flagged.
+// Short / ambiguous words (bc, mc, sala, maa ki, baap ki, ullu, gadha ...) were removed on purpose: they caused false kicks.
 const GALI = [
-    'madarchod', 'maderchod', 'bhenchod', 'bsdk', 'chutiya', 'chutiye',
-    'randi', 'harami', 'kamina', 'gandu', 'gaandu', 'bhosdike', 'bhosdi',
+    'madarchod', 'maderchod', 'bhenchod', 'behenchod', 'bsdk', 'chutiya', 'chutiye',
+    'randi', 'harami', 'gandu', 'gaandu', 'bhosdike', 'bhosdi',
     'lauda', 'lund', 'fuck', 'fucker', 'fucking', 'bitch', 'bastard',
-    'asshole', 'motherfucker', 'bc', 'mc', 'lode', 'maa ki', 'baap ki',
-    'sala', 'saala', 'haramzada', 'kutte', 'kamine', 'ullu', 'gadha'
+    'asshole', 'motherfucker', 'lode', 'haramzada', 'kamina', 'kamine'
 ];
+const GALI_SET = new Set(GALI);
 
 function hasGali(t) {
     if (!t) return false;
-    const l = t.toLowerCase().replace(/[^a-z\u0900-\u097f ]/g, ' ');
-    return GALI.some(w => l.includes(w));
+    const words = String(t).toLowerCase().split(/[^\p{L}\p{N}]+/u);
+    return words.some(w => GALI_SET.has(w));
 }
 
 function isEmojiOnly(t) {
@@ -238,10 +248,11 @@ const AX = {
     }
 };
 
-// Create required dirs
+// Create required dirs (never crash the whole bot if one cannot be created)
 ['sessions', 'temp', 'tmp', 'assets'].forEach(d => {
     const p = path.join(__dirname, d);
-    if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+    try { if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true }); }
+    catch (e) { console.error('Cannot create folder ' + p + ': ' + e.message + ' -> check that the project folder is writable'); }
 });
 
 module.exports = {

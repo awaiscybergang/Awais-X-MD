@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use AWAIS X MD in your work or research, please cite it using the metadata below."
+type: software
+title: "AWAIS X MD"
+abstract: >-
+  AWAIS X MD is an open-source multi-device WhatsApp bot written in Node.js
+  on the Baileys 6.7.18 library. It provides 167 commands in 12 categories
+  (General, YouTube, Download, Student Lab, Developer Tools, Islamic, Awais
+  Tools, Anti Features, Group, Fun, DPZ Lab, AI & More), Gemini AI chat and
+  image generation, media downloaders, Islamic tools, anti-delete/anti-edit/
+  anti-link and group management. It supports Telegram Bot mode and Terminal
+  mode and can be installed on Termux, Ubuntu/Debian VPS (PM2), Windows, Linux
+  and macOS. Unofficial project, not affiliated with WhatsApp or Meta.
+authors:
+  - name: "AWAIS DEV"
+  - name: "X HACKER TEAM"
+version: 2.0.0
+date-released: "2026-10-30"
+license: MIT
+repository-code: "https://github.com/awaiscybergang/Awais-X-MD"
+url: "https://github.com/awaiscybergang/Awais-X-MD"
+keywords:
+  - whatsapp bot
+  - multi-device
+  - baileys
+  - nodejs
+  - gemini ai
+  - termux
+  - telegram pairing
+  - youtube downloader
+  - islamic tools
+  - group management
