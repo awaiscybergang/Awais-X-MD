@@ -477,6 +477,8 @@ Steps
             }
 
             if (connection === 'open') {
+                this._everOpened = true;
+                autoRepaired.delete(this.chatId);   // a later logout may be re-paired automatically again
                 const wasReconnecting = this._reconnectCount;
                 this._reconnectCount = 0;
                 this._codesShown = 0;
@@ -559,6 +561,21 @@ WhatsApp pe bhejo:
                     }
                     if (this._codesShown >= 2) this._altVersion = true;
                     if (this._codesShown >= MAX_PAIR_ATTEMPTS) return this._giveUpPairing();
+                    if (codeShown && /Invalid account signature/i.test(String(why))) {
+                        // WhatsApp accepted the code but refused the login itself. This is NOT a rate limit: waiting does not help.
+                        this._sigFails = (this._sigFails || 0) + 1;
+                        let ver = '';
+                        try { ver = require('./lib/bootstrap').installedVersion('@whiskeysockets/baileys'); } catch (e) { /* unknown */ }
+                        console.log(`[${id}] ❌ WhatsApp rejected the account signature ("Invalid account signature") - this is NOT a rate limit.\n` +
+                            `   Installed WhatsApp library: ${ver || 'unknown'}\n` +
+                            `   1) If it is older than 6.7.22, update it:   npm install @whiskeysockets/baileys@6.7 --allow-git=all   and start again.\n` +
+                            `   2) A WhatsApp Business number that is linked to the Meta Business Platform / coexistence is refused by some library versions -> try a normal WhatsApp number, or the newest 6.7.x.`);
+                        if (this._sigFails >= 2) {
+                            return this._giveUp(`[+${numOf(id)}] ❌ Stopped: WhatsApp keeps rejecting the account signature. See the 2 possible fixes above.`,
+                                '❌ *PAIRING REJECTED*\n\nWhatsApp rejected the login of this account ("Invalid account signature"). The bot owner must update the WhatsApp library, or use a normal (not Business-platform) number.');
+                        }
+                        return this._scheduleStart(phone, 3000);
+                    }
                     if (codeShown) {
                         const aliveSec = Math.round((Date.now() - (this._codeAt || Date.now())) / 1000);
                         const serverDrop = !!code && code !== 428 && code !== 408;   // sent by WhatsApp, not a plain network loss
@@ -601,8 +618,19 @@ WhatsApp pe bhejo:
 
                 // B) Real logout (the number was linked before and WhatsApp removed the device)
                 if (code === DisconnectReason.loggedOut) {
+                    this.stop();   // first end the old socket, THEN delete its folder (a late write of the old login must never reach the next pairing)
                     try { fs.rmSync(this.authPath, { recursive: true, force: true }); } catch {}
                     clearSessionSettings(this.chatId);
+                    delete sessions[this.chatId];
+                    // Terminal on a real screen: the saved login of this number was dead (device removed on the phone, or the bot was off
+                    // when it happened). Do not make the user type "add" again: create a fresh pairing code by itself (once).
+                    if (MODE === 'terminal' && process.stdin.isTTY && !this._everOpened && !autoRepaired.has(this.chatId)) {
+                        autoRepaired.add(this.chatId);
+                        console.log(`[+${numOf(this.chatId)}] ♻️ The saved login of this number is no longer valid (the linked device was removed in WhatsApp). The old session was deleted -> creating a FRESH pairing code now...`);
+                        const num = numOf(this.chatId);
+                        setTimeout(() => { addNumber(num).catch(e => console.log('Error:', e && e.message)); }, 1500);
+                        return;
+                    }
                     await tgBot.sendMessage(this.chatId,
 `❌ *LOGGED OUT*
 
@@ -1319,6 +1347,7 @@ function cleanTempFiles() {
 const MAX_NUMBERS = parseInt(process.env.MAX_NUMBERS, 10) || 5;
 const TERM_PREFIX = 'terminal-';
 const numOf = id => String(id).replace(/^(terminal|web)-/, '');
+const autoRepaired = new Set();   // numbers that already got one automatic fresh pairing after a logout (no endless loop)
 
 function isRegistered(authPath) { return isPairedOnDisk(authPath); }
 
@@ -1626,3 +1655,6 @@ if (MODE === 'telegram') {
     console.log('Terminal mode (multi-number): no Telegram bot needed. Press CTRL+C to stop.');
     startTerminal().catch(e => { console.error('❌ Start error: ' + e.message + ' -> run again with DEBUG=1 for details'); if (process.env.DEBUG === '1') console.error(e.stack); process.exit(1); });
 }
+
+// Exposed for the automatic tests only (the bot itself is started by index.js)
+module.exports = { addNumber, removeNumber, sessions };
